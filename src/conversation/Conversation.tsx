@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch, useSelector } from 'react-redux';
+import MessageInput from '../components/MessageInput';
 
 // import { AppDispatch } from '../store';
 // import ConversationMessages from './ConversationMessages';
@@ -90,7 +91,8 @@ export default function Conversation() {
             showSourceButton={true}
             showToolButton={true}
           /> */}
-          MessageInput
+          <MessageInput />
+          
         </div>
       </div>
     </div>
