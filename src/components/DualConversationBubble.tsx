@@ -194,11 +194,10 @@ const DualAnswerBubble = forwardRef(
       answerA = '',
       answerB = '',
       className = '',
+      onSelect = () => {},
     },
     ref,
   ) => {
-    const [selected, setSelected] = useState<'A' | 'B' | null>(null);
-
     return (
       <div
         ref={ref}
@@ -356,25 +355,18 @@ const DualAnswerBubble = forwardRef(
             <p className="text-lg font-medium mb-3">Which one do you prefer?</p>
             <div className="flex gap-4">
               <button
-                onClick={() => setSelected('A')}
-                className={`px-6 py-2 rounded-lg text-white transition-colors ${
-                  selected === 'A' ? 'bg-green-600' : 'bg-blue-500 hover:bg-blue-600'
-                }`}
+                onClick={() => onSelect('A')}
+                className="px-6 py-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors"
               >
                 Prefer A
               </button>
               <button
-                onClick={() => setSelected('B')}
-                className={`px-6 py-2 rounded-lg text-white transition-colors ${
-                  selected === 'B' ? 'bg-green-600' : 'bg-blue-500 hover:bg-blue-600'
-                }`}
+                onClick={() => onSelect('B')}
+                className="px-6 py-2 rounded-lg text-white bg-blue-500 hover:bg-blue-600 transition-colors"
               >
                 Prefer B
               </button>
             </div>
-            {selected !== null && (
-              <p className="mt-3 text-base">You selected Answer {selected} as preferred.</p>
-            )}
           </div>
         </div>
       </div>
@@ -385,8 +377,8 @@ const DualAnswerBubble = forwardRef(
 export { ConversationBubble, DualAnswerBubble };
 
 // Updated Demo component to include DualAnswerBubble example
-const DualAnswerDemo = () => {
-  const [messages] = useState([
+const Demo = () => {
+  const [messages, setMessages] = useState([
     {
       type: 'QUESTION',
       message: "What's my zodiac sign if I was born on July 19?",
@@ -431,7 +423,55 @@ Today, the Moon encourages you to focus on **self-care** and reflection. You may
   ]);
 
   // Simulating the boolean trigger; in a real app, this could be a state variable like useState(true)
-  const showDualAnswers = true; // Trigger boolean
+  const [showDualAnswers, setShowDualAnswers] = useState(true); // Trigger boolean
+
+  const answerA = `# Mercury Retrograde 🔄
+
+Mercury retrograde can bring challenges in communication and technology. As a Cancer:
+
+- Double-check emails and messages.
+- Avoid making big purchases or signing contracts.
+- Use this time to **reflect** and **reorganize** your priorities.
+
+> Remember: Retrograde periods are for **reviewing, not rushing**.`;
+
+  const answerB = `# Mercury Retrograde Impact kachta 🌌
+
+For Cancers during Mercury retrograde:
+
+- Communication mishaps may arise; be patient.
+- Tech glitches possible—back up important data.
+- Great period for introspection and revisiting old ideas.
+
+> Tip: Embrace the slowdown to nurture your inner world.
+ 
+# Mercury Retrograde Impact kachta 🌌
+
+For Cancers during Mercury retrograde:
+
+- Communication mishaps may arise; be patient.
+- Tech glitches possible—back up important data.
+- Great period for introspection and revisiting old ideas.
+
+> Tip: Embrace the slowdown to nurture your inner world.# Mercury Retrograde Impact kachta 🌌
+
+For Cancers during Mercury retrograde:
+
+- Communication mishaps may arise; be patient.
+- Tech glitches possible—back up important data.
+- Great period for introspection and revisiting old ideas.
+
+> Tip: Embrace the slowdown to nurture your inner world.
+`;
+
+  const handleSelect = (choice) => {
+    const selectedMessage = choice === 'A' ? answerA : answerB;
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { type: 'ANSWER', message: selectedMessage },
+    ]);
+    setShowDualAnswers(false);
+  };
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 p-4">
@@ -446,29 +486,14 @@ Today, the Moon encourages you to focus on **self-care** and reflection. You may
       ))}
       {showDualAnswers && (
         <DualAnswerBubble
-          answerA={`# Mercury Retrograde 🔄
-
-Mercury retrograde can bring challenges in communication and technology. As a Cancer:
-
-- Double-check emails and messages.
-- Avoid making big purchases or signing contracts.
-- Use this time to **reflect** and **reorganize** your priorities.
-
-> Remember: Retrograde periods are for **reviewing, not rushing**.`}
-          answerB={`# Mercury Retrograde Impact 🌌
-
-For Cancers during Mercury retrograde:
-
-- Communication mishaps may arise; be patient.
-- Tech glitches possible—back up important data.
-- Great period for introspection and revisiting old ideas.
-
-> Tip: Embrace the slowdown to nurture your inner world.`}
+          answerA={answerA}
+          answerB={answerB}
           className="mb-4 w-full"
+          onSelect={handleSelect}
         />
       )}
     </div>
   );
 };
 
-export default DualAnswerDemo;
+export default Demo;
