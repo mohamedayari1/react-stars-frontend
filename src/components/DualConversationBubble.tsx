@@ -1,7 +1,7 @@
+import PropTypes from 'prop-types';
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import PropTypes from 'prop-types';
 
 // Hardcoded theme for demo
 const isDarkTheme = false;
@@ -10,9 +10,7 @@ const isDarkTheme = false;
 const MarkdownRenderer = ({ children, className }) => {
   const markdownComponents = {
     h1: ({ children: h1Children }) => (
-      <h1 className="text-2xl font-bold text-purple-600">
-        {h1Children}
-      </h1>
+      <h1 className="text-2xl font-bold text-purple-600">{h1Children}</h1>
     ),
     h2: ({ children: h2Children }) => (
       <h2 className="mt-2 text-xl font-semibold text-indigo-500">
@@ -20,9 +18,7 @@ const MarkdownRenderer = ({ children, className }) => {
       </h2>
     ),
     h3: ({ children: h3Children }) => (
-      <h3 className="mt-2 text-lg font-medium text-blue-500">
-        {h3Children}
-      </h3>
+      <h3 className="mt-2 text-lg font-medium text-blue-500">{h3Children}</h3>
     ),
     blockquote: ({ children: blockquoteChildren }) => (
       <blockquote className="border-l-4 border-purple-400 pl-4 text-gray-600 italic">
@@ -48,9 +44,7 @@ const MarkdownRenderer = ({ children, className }) => {
       </th>
     ),
     td: ({ children: tdChildren }) => (
-      <td className="border border-gray-300 px-3 py-1">
-        {tdChildren}
-      </td>
+      <td className="border border-gray-300 px-3 py-1">{tdChildren}</td>
     ),
   };
 
@@ -62,7 +56,10 @@ const MarkdownRenderer = ({ children, className }) => {
         borderRadius: '28px',
       }}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={markdownComponents}
+      >
         {children}
       </ReactMarkdown>
     </div>
@@ -143,14 +140,7 @@ AnswerHeader.defaultProps = {
 };
 
 const ConversationBubble = forwardRef(
-  (
-    {
-      message = '',
-      type = 'ANSWER',
-      className = '',
-    },
-    ref,
-  ) => {
+  ({ message = '', type = 'ANSWER', className = '' }, ref) => {
     const messageRef = useRef(null);
     const [shouldShowToggle, setShouldShowToggle] = useState(false);
     const [isQuestionCollapsed, setIsQuestionCollapsed] = useState(true);
@@ -216,7 +206,11 @@ const ConversationBubble = forwardRef(
         className={commonClasses}
         style={{ color: isDarkTheme ? '#E5E7EB' : '#374151' }}
       >
-        <AnswerHeader icon="🔮" label="Astrology Insight" textToCopy={message} />
+        <AnswerHeader
+          icon="🔮"
+          label="Astrology Insight"
+          textToCopy={message}
+        />
         <MarkdownRenderer className="mr-5 px-7 py-[18px]">
           {message}
         </MarkdownRenderer>
@@ -298,7 +292,7 @@ DualAnswerBubble.defaultProps = {
 export { ConversationBubble, DualAnswerBubble };
 
 // Updated Demo component
-const Demo = () => {
+const DualDemo = () => {
   const [messages, setMessages] = useState([
     {
       type: 'QUESTION',
@@ -350,6 +344,12 @@ For Cancers during Mercury retrograde:
 - Communication mishaps may arise; be patient.
 - Tech glitches possible—back up important data.
 - Great period for introspection and revisiting old ideas.
+> Tip: Embrace the slowdown to nurture your inner world.
+ # Mercury Retrograde Impact 🌌
+For Cancers during Mercury retrograde:
+- Communication mishaps may arise; be patient.
+- Tech glitches possible—back up important data.
+- Great period for introspection and revisiting old ideas.
 > Tip: Embrace the slowdown to nurture your inner world.`;
 
   const handleSelect = (choice) => {
@@ -384,4 +384,4 @@ For Cancers during Mercury retrograde:
   );
 };
 
-export default Demo;
+export default DualDemo;
