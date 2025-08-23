@@ -2,19 +2,19 @@ import DualDemo from '../components/DualConversationBubble';
 import MessageInput from '../components/MessageInput';
 
 export default function Conversation() {
-  // const fetchAnswer = async (question: string) => {
-  //   console.log("here we call handleFetchAnswerSteaming to get the answer stream chunks");
-  // };
+  const fetchAnswerStream = async (question: string) => {
+    console.log("here we call handleFetchAnswerSteaming to get the answer stream chunks");
+  };
 
-  // const handleQuestionSubmission = (question: string) => {
-  //   // we use here handleQuestion(Conversation , useCallback)
-  //   // ---> handleFetchAnswer(Conversation , useCallback)
-  //   // ---> fetchAnswerStream (conversationSlice)
-  //   // ---> handleFetchAnswerSteaming (conversationHandlers)    (Each chunk updates Redux store via updateStreamingQuery)
-  //   // ---> conversationService (conversationService api calls)
+  const handleQuestionSubmission = (question: string) => {
+    // we use here handleQuestion(Conversation , useCallback)
+    // ---> handleFetchAnswer(Conversation , useCallback)
+    // ---> fetchAnswerStream (conversationSlice)
+    // ---> handleFetchAnswerSteaming (conversationHandlers)    (Each chunk updates Redux store via updateStreamingQuery)
+    // ---> conversationService (conversationService api calls)
 
-  //   console.log(question);
-  // };
+    console.log(question);
+  };
 
   return (
     <div className="flex h-full flex-col justify-end gap-1">
