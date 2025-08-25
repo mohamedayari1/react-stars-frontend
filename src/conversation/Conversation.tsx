@@ -26,18 +26,29 @@ export default function Conversation() {
     // Simulate streaming markdown response with chunks
     const mockMarkdownResponse = `# Response to: "${question}"
 
-# Mercury Retrograde Impact 🌌
-For Cancers during Mercury retrograde:
-- Communication mishaps may arise; be patient.
-- Tech glitches possible—back up important data.
-- Great period for introspection and revisiting old ideas.
-> Tip: Embrace the slowdown to nurture your inner world.
- # Mercury Retrograde Impact 🌌
-For Cancers during Mercury retrograde:
-- Communication mishaps may arise; be patient.
-- Tech glitches possible—back up important data.
-- Great period for introspection and revisiting old ideas.
-> Tip: Embrace the slowdown to nurture your inner world
+
+
+# ✨ The Mystical World of Astrology ✨
+
+## What is Astrology?
+
+Astrology is an ancient **belief system** that suggests there's a relationship between astronomical phenomena and events in the human world. It's been practiced for thousands of years across different cultures and civilizations.
+
+### The Twelve Zodiac Signs 🌟
+
+1. **Aries** (March 21 - April 19) - The Ram 🐏
+2. **Taurus** (April 20 - May 20) - The Bull 🐂  
+3. **Gemini** (May 21 - June 20) - The Twins 👯
+4. **Cancer** (June 21 - July 22) - The Crab 🦀
+5. **Leo** (July 23 - August 22) - The Lion 🦁
+6. **Virgo** (August 23 - September 22) - The Virgin 👸
+7. **Libra** (September 23 - October 22) - The Scales ⚖️
+8. **Scorpio** (October 23 - November 21) - The Scorpion 🦂
+9. **Sagittarius** (November 22 - December 21) - The Archer 🏹
+10. **Capricorn** (December 22 - January 19) - The Goat 🐐
+11. **Aquarius** (January 20 - February 18) - The Water Bearer 🏺
+12. **Pisces** (February 19 - March 20) - The Fish 🐟
+
 
 *Streaming completed successfully!*`;
 
