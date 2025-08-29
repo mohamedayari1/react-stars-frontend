@@ -1,34 +1,52 @@
 import PropTypes from 'prop-types';
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+// import remarkGfm from 'remark-gfm'; // Temporarily disabled due to streaming issues
+
+import MarkdownErrorBoundary from './MarkdownErrorBoundary';
+
+// TypeScript interfaces
+interface ConversationBubbleProps {
+  message?: string;
+  type: 'QUESTION' | 'ANSWER';
+  className?: string;
+}
+
+interface MarkdownRendererProps {
+  children: React.ReactNode;
+  className?: string;
+}
 
 // Hardcoded theme for demo
 const isDarkTheme = false;
 
 // Reusable Markdown Renderer component
-const MarkdownRenderer = ({ children, className }) => {
+const MarkdownRenderer = ({ children, className }: MarkdownRendererProps) => {
   const markdownComponents = {
-    h1: ({ children: h1Children }) => (
+    h1: ({ children: h1Children }: { children: React.ReactNode }) => (
       <h1 className="text-2xl font-bold text-purple-600">{h1Children}</h1>
     ),
-    h2: ({ children: h2Children }) => (
+    h2: ({ children: h2Children }: { children: React.ReactNode }) => (
       <h2 className="mt-2 text-xl font-semibold text-indigo-500">
         {h2Children}
       </h2>
     ),
-    h3: ({ children: h3Children }) => (
+    h3: ({ children: h3Children }: { children: React.ReactNode }) => (
       <h3 className="mt-2 text-lg font-medium text-blue-500">{h3Children}</h3>
     ),
-    blockquote: ({ children: blockquoteChildren }) => (
+    blockquote: ({
+      children: blockquoteChildren,
+    }: {
+      children: React.ReactNode;
+    }) => (
       <blockquote className="border-l-4 border-purple-400 pl-4 text-gray-600 italic">
         {blockquoteChildren}
       </blockquote>
     ),
-    ul: ({ children: ulChildren }) => (
+    ul: ({ children: ulChildren }: { children: React.ReactNode }) => (
       <ul className="list-disc space-y-1 pl-5">{ulChildren}</ul>
     ),
-    ol: ({ children: olChildren }) => (
+    ol: ({ children: olChildren }: { children: React.ReactNode }) => (
       <ol className="list-decimal space-y-1 pl-5">{olChildren}</ol>
     ),
     // Add more markdown components as needed
@@ -42,25 +60,38 @@ const MarkdownRenderer = ({ children, className }) => {
         borderRadius: '28px',
       }}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={markdownComponents}
-      >
-        {children}
-      </ReactMarkdown>
+      {/* FIXED: Add safety check to prevent ReactMarkdown errors */}
+      {children && typeof children === 'string' ? (
+        <MarkdownErrorBoundary>
+          <ReactMarkdown
+            // remarkPlugins={[remarkGfm]} // Temporarily disabled due to streaming issues
+            components={markdownComponents}
+          >
+            {children}
+          </ReactMarkdown>
+        </MarkdownErrorBoundary>
+      ) : (
+        <div className="text-gray-500">No content to display</div>
+      )}
     </div>
   );
 };
 
 // Simple Avatar component
-const Avatar = ({ children, className }) => (
+const Avatar = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
   <div className={`flex items-center justify-center ${className}`}>
     {children}
   </div>
 );
 
 // Copy button
-const CopyButton = ({ textToCopy }) => {
+const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -85,7 +116,15 @@ const CopyButton = ({ textToCopy }) => {
 };
 
 // Answer bubble header (reusable)
-const AnswerHeader = ({ icon, label, textToCopy }) => (
+const AnswerHeader = ({
+  icon,
+  label,
+  textToCopy,
+}: {
+  icon: string;
+  label: string;
+  textToCopy?: string;
+}) => (
   <div className="my-2 flex flex-row items-center gap-3">
     <Avatar className="h-[34px] w-[34px] text-2xl">
       <div
@@ -100,8 +139,11 @@ const AnswerHeader = ({ icon, label, textToCopy }) => (
   </div>
 );
 
-const ConversationBubble = forwardRef(
+const ConversationBubble = forwardRef<HTMLDivElement, ConversationBubbleProps>(
   ({ message = '', type = 'ANSWER', className = '' }, ref) => {
+    // FIXED: Ensure message is always a string to prevent ReactMarkdown errors
+    const safeMessage =
+      typeof message === 'string' ? message : String(message || '');
     const messageRef = useRef(null);
     const [shouldShowToggle, setShouldShowToggle] = useState(false);
     const [isQuestionCollapsed, setIsQuestionCollapsed] = useState(true);
@@ -111,7 +153,7 @@ const ConversationBubble = forwardRef(
         const height = messageRef.current.scrollHeight;
         setShouldShowToggle(height > 84);
       }
-    }, [message, type]);
+    }, [safeMessage, type]);
 
     const commonClasses = `w-full ${className} ${type === 'ANSWER' ? 'flex-col self-start group' : ''}`;
 
@@ -130,7 +172,7 @@ const ConversationBubble = forwardRef(
                   WebkitLineClamp: isQuestionCollapsed ? 4 : 'none',
                 }}
               >
-                {message}
+                {safeMessage}
                 {shouldShowToggle && (
                   <button
                     onClick={(e) => {
@@ -167,9 +209,9 @@ const ConversationBubble = forwardRef(
         className={commonClasses}
         style={{ color: isDarkTheme ? '#E5E7EB' : '#374151' }}
       >
-        <AnswerHeader icon="🔮" label="AI Assistant" textToCopy={message} />
+        <AnswerHeader icon="🔮" label="AI Assistant" textToCopy={safeMessage} />
         <MarkdownRenderer className="mr-5 px-7 py-[18px]">
-          {message || 'Thinking...'}
+          {safeMessage || 'Thinking...'}
         </MarkdownRenderer>
       </div>
     );

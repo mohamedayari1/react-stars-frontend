@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import ArrowDown from '../assets/arrow-down.svg';
 import ConversationBubble from '../components/ConversationBubble';
+import MarkdownErrorBoundary from '../components/MarkdownErrorBoundary';
 
 // SCROLLING CONSTANTS: Define thresholds and margins for scroll behavior
 const SCROLL_THRESHOLD = 10; // Pixels from bottom to consider "at bottom"
@@ -139,25 +140,33 @@ export default function ConversationMessages({
               <Fragment key={`${index}-query-fragment`}>
                 {/* QUESTION BUBBLE */}
                 <ConversationBubble
-                  message={query.prompt}
+                  message={query.prompt || ''}
                   type="QUESTION"
-                  className={index === 0 ? FIRST_QUESTION_BUBBLE_MARGIN_TOP : ''}
+                  className={
+                    index === 0 ? FIRST_QUESTION_BUBBLE_MARGIN_TOP : ''
+                  }
                 />
 
                 {/* ANSWER BUBBLE - Show if response exists OR if currently streaming */}
                 {(query.response || isCurrentlyStreaming) && (
-                  <ConversationBubble
-                    message={query.response || ''}
-                    type="ANSWER"
-                    className={isLastMessage ? LAST_BUBBLE_MARGIN : DEFAULT_BUBBLE_MARGIN}
-                  />
+                  <MarkdownErrorBoundary>
+                    <ConversationBubble
+                      message={query.response || ''}
+                      type="ANSWER"
+                      className={
+                        isLastMessage
+                          ? LAST_BUBBLE_MARGIN
+                          : DEFAULT_BUBBLE_MARGIN
+                      }
+                    />
+                  </MarkdownErrorBoundary>
                 )}
               </Fragment>
             );
           })
         ) : showHeroOnEmpty ? (
           // EMPTY STATE: Show hero/welcome screen when no messages
-          <div className="flex items-center justify-center h-full">
+          <div className="flex h-full items-center justify-center">
             <p className="text-gray-500">Welcome! Ask me anything...</p>
           </div>
         ) : null}
