@@ -1,49 +1,73 @@
-import PropTypes from 'prop-types';
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+// import remarkGfm from 'remark-gfm'; // Temporarily disabled due to streaming issues
+
+import MarkdownErrorBoundary from './MarkdownErrorBoundary';
+
+// TypeScript interfaces
+interface MarkdownRendererProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+interface ConversationBubbleProps {
+  message?: string;
+  type: 'QUESTION' | 'ANSWER';
+  className?: string;
+}
+
+interface DualAnswerBubbleProps {
+  answerA?: string;
+  answerB?: string;
+  className?: string;
+  onSelect?: (choice: 'A' | 'B') => void;
+}
 
 // Hardcoded theme for demo
 const isDarkTheme = false;
 
 // Reusable Markdown Renderer component
-const MarkdownRenderer = ({ children, className }) => {
+const MarkdownRenderer = ({ children, className }: MarkdownRendererProps) => {
   const markdownComponents = {
-    h1: ({ children: h1Children }) => (
+    h1: ({ children: h1Children }: { children: React.ReactNode }) => (
       <h1 className="text-2xl font-bold text-purple-600">{h1Children}</h1>
     ),
-    h2: ({ children: h2Children }) => (
+    h2: ({ children: h2Children }: { children: React.ReactNode }) => (
       <h2 className="mt-2 text-xl font-semibold text-indigo-500">
         {h2Children}
       </h2>
     ),
-    h3: ({ children: h3Children }) => (
+    h3: ({ children: h3Children }: { children: React.ReactNode }) => (
       <h3 className="mt-2 text-lg font-medium text-blue-500">{h3Children}</h3>
     ),
-    blockquote: ({ children: blockquoteChildren }) => (
+    blockquote: ({
+      children: blockquoteChildren,
+    }: {
+      children: React.ReactNode;
+    }) => (
       <blockquote className="border-l-4 border-purple-400 pl-4 text-gray-600 italic">
         {blockquoteChildren}
       </blockquote>
     ),
-    ul: ({ children: ulChildren }) => (
+    ul: ({ children: ulChildren }: { children: React.ReactNode }) => (
       <ul className="list-disc space-y-1 pl-5">{ulChildren}</ul>
     ),
-    ol: ({ children: olChildren }) => (
+    ol: ({ children: olChildren }: { children: React.ReactNode }) => (
       <ol className="list-decimal space-y-1 pl-5">{olChildren}</ol>
     ),
-    table: ({ children: tableChildren }) => (
+    table: ({ children: tableChildren }: { children: React.ReactNode }) => (
       <div className="overflow-x-auto">
         <table className="table-auto border-collapse border border-gray-300">
           {tableChildren}
         </table>
       </div>
     ),
-    th: ({ children: thChildren }) => (
+    th: ({ children: thChildren }: { children: React.ReactNode }) => (
       <th className="border border-gray-300 bg-gray-100 px-3 py-1 text-left">
         {thChildren}
       </th>
     ),
-    td: ({ children: tdChildren }) => (
+    td: ({ children: tdChildren }: { children: React.ReactNode }) => (
       <td className="border border-gray-300 px-3 py-1">{tdChildren}</td>
     ),
   };
@@ -56,39 +80,38 @@ const MarkdownRenderer = ({ children, className }) => {
         borderRadius: '28px',
       }}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={markdownComponents}
-      >
-        {children}
-      </ReactMarkdown>
+      {/* FIXED: Add safety check to prevent ReactMarkdown errors */}
+      {children && typeof children === 'string' ? (
+        <MarkdownErrorBoundary>
+          <ReactMarkdown
+            // remarkPlugins={[remarkGfm]} // Temporarily disabled due to streaming issues
+            components={markdownComponents}
+          >
+            {children}
+          </ReactMarkdown>
+        </MarkdownErrorBoundary>
+      ) : (
+        <div className="text-gray-500">No content to display</div>
+      )}
     </div>
   );
 };
-MarkdownRenderer.propTypes = {
-  children: PropTypes.string.isRequired,
-  className: PropTypes.string,
-};
-MarkdownRenderer.defaultProps = {
-  className: '',
-};
 
 // Simple Avatar component
-const Avatar = ({ children, className }) => (
+const Avatar = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
   <div className={`flex items-center justify-center ${className}`}>
     {children}
   </div>
 );
-Avatar.propTypes = {
-  children: PropTypes.node.isRequired,
-  className: PropTypes.string,
-};
-Avatar.defaultProps = {
-  className: '',
-};
 
 // Copy button
-const CopyButton = ({ textToCopy }) => {
+const CopyButton = ({ textToCopy }: { textToCopy: string }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -111,12 +134,17 @@ const CopyButton = ({ textToCopy }) => {
     </button>
   );
 };
-CopyButton.propTypes = {
-  textToCopy: PropTypes.string.isRequired,
-};
 
 // Answer bubble header (reusable)
-const AnswerHeader = ({ icon, label, textToCopy }) => (
+const AnswerHeader = ({
+  icon,
+  label,
+  textToCopy,
+}: {
+  icon: string;
+  label: string;
+  textToCopy?: string;
+}) => (
   <div className="my-2 flex flex-row items-center gap-3">
     <Avatar className="h-[34px] w-[34px] text-2xl">
       <div
@@ -130,18 +158,13 @@ const AnswerHeader = ({ icon, label, textToCopy }) => (
     {textToCopy && <CopyButton textToCopy={textToCopy} />}
   </div>
 );
-AnswerHeader.propTypes = {
-  icon: PropTypes.node.isRequired,
-  label: PropTypes.string.isRequired,
-  textToCopy: PropTypes.string,
-};
-AnswerHeader.defaultProps = {
-  textToCopy: null,
-};
 
-const ConversationBubble = forwardRef(
+const ConversationBubble = forwardRef<HTMLDivElement, ConversationBubbleProps>(
   ({ message = '', type = 'ANSWER', className = '' }, ref) => {
-    const messageRef = useRef(null);
+    // FIXED: Ensure message is always a string to prevent ReactMarkdown errors
+    const safeMessage =
+      typeof message === 'string' ? message : String(message || '');
+    const messageRef = useRef<HTMLDivElement>(null);
     const [shouldShowToggle, setShouldShowToggle] = useState(false);
     const [isQuestionCollapsed, setIsQuestionCollapsed] = useState(true);
 
@@ -209,25 +232,17 @@ const ConversationBubble = forwardRef(
         <AnswerHeader
           icon="🔮"
           label="Astrology Insight"
-          textToCopy={message}
+          textToCopy={safeMessage}
         />
         <MarkdownRenderer className="mr-5 px-7 py-[18px]">
-          {message}
+          {safeMessage || 'Thinking...'}
         </MarkdownRenderer>
       </div>
     );
   },
 );
-ConversationBubble.propTypes = {
-  message: PropTypes.string.isRequired,
-  type: PropTypes.oneOf(['QUESTION', 'ANSWER']).isRequired,
-  className: PropTypes.string,
-};
-ConversationBubble.defaultProps = {
-  className: '',
-};
 
-const DualAnswerBubble = forwardRef(
+const DualAnswerBubble = forwardRef<HTMLDivElement, DualAnswerBubbleProps>(
   (
     { answerA = '', answerB = '', className = '', onSelect = () => {} },
     ref,
@@ -278,22 +293,14 @@ const DualAnswerBubble = forwardRef(
     );
   },
 );
-DualAnswerBubble.propTypes = {
-  answerA: PropTypes.string.isRequired,
-  answerB: PropTypes.string.isRequired,
-  className: PropTypes.string,
-  onSelect: PropTypes.func,
-};
-DualAnswerBubble.defaultProps = {
-  className: '',
-  onSelect: () => {},
-};
 
 export { ConversationBubble, DualAnswerBubble };
 
 // Updated Demo component
 const DualDemo = () => {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<
+    Array<{ type: 'QUESTION' | 'ANSWER'; message: string }>
+  >([
     {
       type: 'QUESTION',
       message: "What's my zodiac sign if I was born on July 19?",
@@ -344,15 +351,9 @@ For Cancers during Mercury retrograde:
 - Communication mishaps may arise; be patient.
 - Tech glitches possible—back up important data.
 - Great period for introspection and revisiting old ideas.
-> Tip: Embrace the slowdown to nurture your inner world.
- # Mercury Retrograde Impact 🌌
-For Cancers during Mercury retrograde:
-- Communication mishaps may arise; be patient.
-- Tech glitches possible—back up important data.
-- Great period for introspection and revisiting old ideas.
 > Tip: Embrace the slowdown to nurture your inner world.`;
 
-  const handleSelect = (choice) => {
+  const handleSelect = (choice: 'A' | 'B') => {
     const selectedMessage = choice === 'A' ? answerA : answerB;
     setMessages((prevMessages) => [
       ...prevMessages,

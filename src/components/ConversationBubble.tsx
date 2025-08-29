@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 // import remarkGfm from 'remark-gfm'; // Temporarily disabled due to streaming issues
@@ -144,7 +143,7 @@ const ConversationBubble = forwardRef<HTMLDivElement, ConversationBubbleProps>(
     // FIXED: Ensure message is always a string to prevent ReactMarkdown errors
     const safeMessage =
       typeof message === 'string' ? message : String(message || '');
-    const messageRef = useRef(null);
+    const messageRef = useRef<HTMLDivElement>(null);
     const [shouldShowToggle, setShouldShowToggle] = useState(false);
     const [isQuestionCollapsed, setIsQuestionCollapsed] = useState(true);
 
@@ -217,11 +216,5 @@ const ConversationBubble = forwardRef<HTMLDivElement, ConversationBubbleProps>(
     );
   },
 );
-
-ConversationBubble.propTypes = {
-  message: PropTypes.string,
-  type: PropTypes.oneOf(['QUESTION', 'ANSWER']).isRequired,
-  className: PropTypes.string,
-};
 
 export default ConversationBubble;
