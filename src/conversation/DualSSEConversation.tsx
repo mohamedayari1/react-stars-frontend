@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import { DualAnswerBubble } from '../components/DualConversationBubble';
+import ConversationBubble from '../components/ConversationBubble';
 import MessageInput from '../components/MessageInput';
 
 // Types for our conversation data
@@ -10,6 +11,8 @@ interface Query {
   responseB?: string; // Second response for dual mode
   status: 'pending' | 'streaming' | 'completed' | 'error';
   isDual?: boolean; // Flag to indicate if this should render dual responses
+  selectedResponse?: string; // Store the user's selected response
+  selectedTone?: 'professional' | 'casual'; // Store which tone was selected
 }
 
 // Utility function to sanitize markdown content
@@ -247,7 +250,7 @@ export default function DualSSEConversation() {
     question: string,
     isDual: boolean = true,
   ) => {
-    console.log('📝 Question submitted:', question, 'Dual mode:', isDual);
+    console.log('�� Question submitted:', question, 'Dual mode:', isDual);
 
     if (question && status !== 'loading') {
       const trimmedQuestion = question.trim();
@@ -306,21 +309,88 @@ export default function DualSSEConversation() {
   // Handle user selection of preferred response
   const handleResponseSelection = (queryIndex: number, choice: 'A' | 'B') => {
     console.log(`🎯 User selected response ${choice} for query ${queryIndex}`);
-
+    
     setQueries((prev) =>
       prev.map((q, idx) => {
         if (idx === queryIndex) {
           const selectedResponse = choice === 'A' ? q.response : q.responseB;
+          const selectedTone = choice === 'A' ? 'professional' : 'casual';
+          
           return {
             ...q,
-            response: selectedResponse,
-            responseB: undefined,
-            isDual: false,
+            selectedResponse: selectedResponse,
+            selectedTone: selectedTone,
+            isDual: false, // Mark as no longer dual
           };
         }
         return q;
       }),
     );
+  };
+
+  // Render function for different query states
+  const renderQueryResponse = (query: Query, index: number) => {
+    // If user has selected a response, show it using ConversationBubble
+    if (query.selectedResponse) {
+      return (
+        <div className="mb-7">
+          <ConversationBubble
+            type="ANSWER"
+            message={query.selectedResponse}
+            className="w-full"
+          />
+        </div>
+      );
+    }
+
+    // If it's a dual response and both are available, show DualAnswerBubble
+    if (query.isDual && query.response && query.responseB) {
+      return (
+        <DualAnswerBubble
+          answerA={query.response}
+          answerB={query.responseB}
+          onSelect={(choice) => handleResponseSelection(index, choice)}
+          className="mb-7"
+        />
+      );
+    }
+
+    // If it's a single response, show it using ConversationBubble
+    if (query.response) {
+      return (
+        <div className="mb-7">
+          <ConversationBubble
+            type="ANSWER"
+            message={query.response}
+            className="w-full"
+          />
+        </div>
+      );
+    }
+
+    // If still streaming, show loading state
+    if (query.status === 'streaming') {
+      return (
+        <div className="mb-7">
+          <div className="flex items-center justify-center">
+            <div className="text-gray-500">Generating responses...</div>
+          </div>
+        </div>
+      );
+    }
+
+    // If error, show error state
+    if (query.status === 'error') {
+      return (
+        <div className="mb-7">
+          <div className="flex items-center justify-center">
+            <div className="text-red-500">Error occurred while generating response</div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -330,47 +400,15 @@ export default function DualSSEConversation() {
           <div key={index}>
             {/* Question */}
             <div className="mb-4">
-              <div className="flex w-full justify-end gap-2">
-                <div className="relative flex max-w-[70%] flex-col">
-                  <div className="flex items-end gap-2 rounded-[28px] bg-gradient-to-r from-purple-500 to-blue-500 px-5 py-4 text-sm leading-normal break-words whitespace-pre-wrap text-white sm:text-base">
-                    {query.prompt}
-                  </div>
-                </div>
-              </div>
+              <ConversationBubble
+                type="QUESTION"
+                message={query.prompt}
+                className="w-full"
+              />
             </div>
 
             {/* Answer(s) */}
-            {query.isDual && query.response && query.responseB ? (
-              <DualAnswerBubble
-                answerA={query.response}
-                answerB={query.responseB}
-                onSelect={(choice) => handleResponseSelection(index, choice)}
-                className="mb-7"
-              />
-            ) : query.response ? (
-              <div className="mb-7">
-                {/* Single response rendering */}
-                <div className="group flex w-full flex-col self-start">
-                  <div className="my-2 flex flex-row items-center gap-3">
-                    <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-green-500 text-sm font-bold text-white">
-                      🔮
-                    </div>
-                    <p className="text-base font-semibold">
-                      Professional Response
-                    </p>
-                  </div>
-                  <div className="prose prose-sm sm:prose-base mr-5 px-7 py-[18px]">
-                    {query.response}
-                  </div>
-                </div>
-              </div>
-            ) : query.status === 'streaming' ? (
-              <div className="mb-7">
-                <div className="flex items-center justify-center">
-                  <div className="text-gray-500">Generating responses...</div>
-                </div>
-              </div>
-            ) : null}
+            {renderQueryResponse(query, index)}
           </div>
         ))}
       </div>
@@ -378,7 +416,7 @@ export default function DualSSEConversation() {
       <div className="bg-opacity-0 z-3 flex h-auto w-full max-w-[1300px] flex-col items-end self-center rounded-2xl py-1 md:w-9/12 lg:w-8/12 xl:w-8/12 2xl:w-6/12">
         <div className="flex w-full items-center gap-2 rounded-[40px]">
           <MessageInput
-            onSubmit={(question) => handleQuestionSubmission(question, false)}
+            onSubmit={(question) => handleQuestionSubmission(question, true)}
             loading={status === 'loading'}
           />
           <button

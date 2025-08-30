@@ -15,6 +15,7 @@
 
 import { Route, Routes } from 'react-router-dom';
 import DualSSEConversation from './conversation/DualSSEConversation';
+import SSEConversation from './conversation/SSEConversation';
 
 export default function App() {
   return (
