@@ -1,8 +1,15 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
 import { DualAnswerBubble } from '../components/DualConversationBubble';
 import ConversationBubble from '../components/ConversationBubble';
 import MessageInput from '../components/MessageInput';
+import ArrowDown from '../assets/arrow-down.svg';
+
+// SCROLLING CONSTANTS: Define thresholds and margins for scroll behavior
+const SCROLL_THRESHOLD = 10; // Pixels from bottom to consider "at bottom"
+const LAST_BUBBLE_MARGIN = 'mb-32'; // Extra margin for last message to avoid input overlap
+const DEFAULT_BUBBLE_MARGIN = 'mb-7'; // Standard spacing between messages
+const FIRST_QUESTION_BUBBLE_MARGIN_TOP = 'mt-5'; // Top margin for first message
 
 // Types for our conversation data
 interface Query {
@@ -64,10 +71,80 @@ export default function DualSSEConversation() {
   const [queries, setQueries] = useState<Query[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading'>('idle');
 
+  // SCROLLING STATE MANAGEMENT
+  const conversationRef = useRef<HTMLDivElement>(null);
+  const [hasScrolledToLast, setHasScrolledToLast] = useState(true);
+  const [userInterruptedScroll, setUserInterruptedScroll] = useState(false);
+
   // Debounce timer for reducing re-renders during streaming
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const SERVER_URL = 'http://localhost:3000';
+
+  // SCROLL INTERRUPTION HANDLER
+  const handleUserScrollInterruption = useCallback(() => {
+    if (!userInterruptedScroll && status === 'loading') {
+      setUserInterruptedScroll(true);
+    }
+  }, [userInterruptedScroll, status]);
+
+  // MAIN SCROLL FUNCTION
+  const scrollConversationToBottom = useCallback(() => {
+    if (!conversationRef.current || userInterruptedScroll) return;
+
+    requestAnimationFrame(() => {
+      if (!conversationRef?.current) return;
+
+      if (status === 'idle' || !queries[queries.length - 1]?.response) {
+        conversationRef.current.scrollTo({
+          behavior: 'smooth',
+          top: conversationRef.current.scrollHeight,
+        });
+      } else {
+        conversationRef.current.scrollTop = conversationRef.current.scrollHeight;
+      }
+    });
+  }, [userInterruptedScroll, status, queries]);
+
+  // SCROLL POSITION DETECTOR
+  const checkScrollPosition = useCallback(() => {
+    const el = conversationRef.current;
+    if (!el) return;
+
+    const isAtBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_THRESHOLD;
+    setHasScrolledToLast(isAtBottom);
+  }, []);
+
+  // AUTO-SCROLL TRIGGER
+  useEffect(() => {
+    if (!userInterruptedScroll) {
+      scrollConversationToBottom();
+    }
+  }, [
+    queries.length,
+    queries[queries.length - 1]?.response,
+    queries[queries.length - 1]?.responseB,
+    userInterruptedScroll,
+    scrollConversationToBottom,
+  ]);
+
+  // RESET SCROLL INTERRUPTION
+  useEffect(() => {
+    if (status === 'idle') {
+      setUserInterruptedScroll(false);
+    }
+  }, [status]);
+
+  // SCROLL EVENT LISTENER SETUP
+  useEffect(() => {
+    const currentConversationRef = conversationRef.current;
+    currentConversationRef?.addEventListener('scroll', checkScrollPosition);
+
+    return () => {
+      currentConversationRef?.removeEventListener('scroll', checkScrollPosition);
+    };
+  }, [checkScrollPosition]);
 
   // Function to fetch tone-specific response via SSE
   const fetchToneResponse = async (
@@ -309,13 +386,13 @@ export default function DualSSEConversation() {
   // Handle user selection of preferred response
   const handleResponseSelection = (queryIndex: number, choice: 'A' | 'B') => {
     console.log(`🎯 User selected response ${choice} for query ${queryIndex}`);
-    
+
     setQueries((prev) =>
       prev.map((q, idx) => {
         if (idx === queryIndex) {
           const selectedResponse = choice === 'A' ? q.response : q.responseB;
           const selectedTone = choice === 'A' ? 'professional' : 'casual';
-          
+
           return {
             ...q,
             selectedResponse: selectedResponse,
@@ -333,7 +410,7 @@ export default function DualSSEConversation() {
     // If user has selected a response, show it using ConversationBubble
     if (query.selectedResponse) {
       return (
-        <div className="mb-7">
+        <div className={index === queries.length - 1 ? LAST_BUBBLE_MARGIN : DEFAULT_BUBBLE_MARGIN}>
           <ConversationBubble
             type="ANSWER"
             message={query.selectedResponse}
@@ -346,19 +423,21 @@ export default function DualSSEConversation() {
     // If it's a dual response and both are available, show DualAnswerBubble
     if (query.isDual && query.response && query.responseB) {
       return (
-        <DualAnswerBubble
-          answerA={query.response}
-          answerB={query.responseB}
-          onSelect={(choice) => handleResponseSelection(index, choice)}
-          className="mb-7"
-        />
+        <div className={index === queries.length - 1 ? LAST_BUBBLE_MARGIN : DEFAULT_BUBBLE_MARGIN}>
+          <DualAnswerBubble
+            answerA={query.response}
+            answerB={query.responseB}
+            onSelect={(choice) => handleResponseSelection(index, choice)}
+            className="w-full"
+          />
+        </div>
       );
     }
 
     // If it's a single response, show it using ConversationBubble
     if (query.response) {
       return (
-        <div className="mb-7">
+        <div className={index === queries.length - 1 ? LAST_BUBBLE_MARGIN : DEFAULT_BUBBLE_MARGIN}>
           <ConversationBubble
             type="ANSWER"
             message={query.response}
@@ -371,7 +450,7 @@ export default function DualSSEConversation() {
     // If still streaming, show loading state
     if (query.status === 'streaming') {
       return (
-        <div className="mb-7">
+        <div className={index === queries.length - 1 ? LAST_BUBBLE_MARGIN : DEFAULT_BUBBLE_MARGIN}>
           <div className="flex items-center justify-center">
             <div className="text-gray-500">Generating responses...</div>
           </div>
@@ -382,7 +461,7 @@ export default function DualSSEConversation() {
     // If error, show error state
     if (query.status === 'error') {
       return (
-        <div className="mb-7">
+        <div className={index === queries.length - 1 ? LAST_BUBBLE_MARGIN : DEFAULT_BUBBLE_MARGIN}>
           <div className="flex items-center justify-center">
             <div className="text-red-500">Error occurred while generating response</div>
           </div>
@@ -395,31 +474,59 @@ export default function DualSSEConversation() {
 
   return (
     <div className="flex h-full flex-col justify-end gap-1">
-      <div className="flex-1 overflow-y-auto">
-        {queries.map((query, index) => (
-          <div key={index}>
-            {/* Question */}
-            <div className="mb-4">
-              <ConversationBubble
-                type="QUESTION"
-                message={query.prompt}
-                className="w-full"
-              />
-            </div>
+      {/* MAIN CONVERSATION AREA WITH SCROLLING */}
+      <div
+        ref={conversationRef}
+        onWheel={handleUserScrollInterruption}
+        onTouchMove={handleUserScrollInterruption}
+        className="flex h-full w-full justify-center overflow-y-auto will-change-scroll sm:pt-6 lg:pt-12"
+      >
+        {/* SCROLL-TO-BOTTOM BUTTON */}
+        {queries.length > 0 && !hasScrolledToLast && (
+          <button
+            onClick={() => {
+              setUserInterruptedScroll(false);
+              scrollConversationToBottom();
+            }}
+            aria-label="Scroll to bottom"
+            className="border-gray-alpha bg-opacity-50 dark:bg-gunmetal md:bg-opacity-100 fixed right-14 bottom-40 z-10 flex h-7 w-7 items-center justify-center rounded-full border-[0.5px] bg-gray-100 md:h-9 md:w-9"
+          >
+            <img
+              src={ArrowDown}
+              alt="arrow down"
+              className="h-4 w-4 opacity-50 filter md:h-5 md:w-5 dark:invert"
+            />
+          </button>
+        )}
 
-            {/* Answer(s) */}
-            {renderQueryResponse(query, index)}
-          </div>
-        ))}
+        {/* MAIN CONTENT CONTAINER */}
+        <div className="w-full max-w-[1300px] px-2 md:w-9/12 lg:w-8/12 xl:w-8/12 2xl:w-6/12">
+          {queries.map((query, index) => (
+            <div key={index}>
+              {/* Question */}
+              <div className={index === 0 ? FIRST_QUESTION_BUBBLE_MARGIN_TOP : ''}>
+                <ConversationBubble
+                  type="QUESTION"
+                  message={query.prompt}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Answer(s) */}
+              {renderQueryResponse(query, index)}
+            </div>
+          ))}
+        </div>
       </div>
 
+      {/* INPUT AREA */}
       <div className="bg-opacity-0 z-3 flex h-auto w-full max-w-[1300px] flex-col items-end self-center rounded-2xl py-1 md:w-9/12 lg:w-8/12 xl:w-8/12 2xl:w-6/12">
         <div className="flex w-full items-center gap-2 rounded-[40px]">
           <MessageInput
             onSubmit={(question) => handleQuestionSubmission(question, true)}
             loading={status === 'loading'}
           />
-          <button
+          {/* <button
             onClick={() => {
               const question = prompt(
                 'Enter your question for dual tone responses:',
@@ -430,7 +537,7 @@ export default function DualSSEConversation() {
             title="Get both professional and casual responses"
           >
             🎭 Dual Tone
-          </button>
+          </button> */}
         </div>
       </div>
     </div>
