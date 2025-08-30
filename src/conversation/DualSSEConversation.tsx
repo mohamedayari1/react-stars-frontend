@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 
-import { createSSEClient } from '../api/client';
 import { DualAnswerBubble } from '../components/DualConversationBubble';
 import MessageInput from '../components/MessageInput';
 
@@ -62,16 +61,138 @@ export default function DualSSEConversation() {
   const [queries, setQueries] = useState<Query[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading'>('idle');
 
-  // Create SSE client instance
-  const sseClient = useRef(createSSEClient());
+  // Debounce timer for reducing re-renders during streaming
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Function to fetch dual responses (you can modify this to call your dual endpoint)
+  const SERVER_URL = 'http://localhost:3000';
+
+  // Function to fetch tone-specific response via SSE
+  const fetchToneResponse = async (
+    question: string,
+    tone: 'professional' | 'casual',
+    queryIndex: number,
+    isResponseB: boolean = false,
+  ): Promise<void> => {
+    console.log(`🎭 Starting ${tone} tone SSE stream for question:`, question);
+
+    try {
+      // Use fetch with POST method instead of EventSource
+      const response = await fetch(`${SERVER_URL}/gemini-tone`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: question,
+          tone: tone,
+          numResults: 5,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let responseText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              console.log(`${tone} tone response completed`);
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.parts && parsed.parts[0]?.text) {
+                responseText = parsed.parts[0].text;
+
+                // Clear previous debounce timer
+                if (debounceTimer.current) {
+                  clearTimeout(debounceTimer.current);
+                }
+
+                // Debounce the state update to reduce ReactMarkdown re-renders
+                debounceTimer.current = setTimeout(() => {
+                  try {
+                    const sanitizedResponse =
+                      sanitizeMarkdownContent(responseText);
+
+                    // Update the appropriate response field based on which tone this is
+                    setQueries((prev) =>
+                      prev.map((q, idx) => {
+                        if (idx === queryIndex) {
+                          if (isResponseB) {
+                            return { ...q, responseB: sanitizedResponse };
+                          } else {
+                            return { ...q, response: sanitizedResponse };
+                          }
+                        }
+                        return q;
+                      }),
+                    );
+                  } catch (error) {
+                    console.error(
+                      `Error processing ${tone} tone markdown:`,
+                      error,
+                    );
+                    // Fallback: set the raw response without sanitization
+                    setQueries((prev) =>
+                      prev.map((q, idx) => {
+                        if (idx === queryIndex) {
+                          if (isResponseB) {
+                            return { ...q, responseB: responseText };
+                          } else {
+                            return { ...q, response: responseText };
+                          }
+                        }
+                        return q;
+                      }),
+                    );
+                  }
+                }, 100); // 100ms debounce
+              }
+
+              // Check if this chunk indicates completion
+              if (parsed.isComplete) {
+                console.log(`${tone} tone response completed`);
+              }
+            } catch (e) {
+              // Skip invalid JSON
+              console.warn('Invalid JSON in SSE stream:', e);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`${tone} tone request error:`, error);
+      throw error;
+    }
+  };
+
+  // Function to fetch dual responses in parallel
   const fetchDualAnswerStream = async (
     question: string,
     queryIndex: number,
   ) => {
-    console.log('Starting dual SSE stream for question:', question);
+    console.log(
+      '🚀 Starting parallel dual tone SSE streams for question:',
+      question,
+    );
 
     setQueries((prev) =>
       prev.map((q, idx) =>
@@ -80,110 +201,33 @@ export default function DualSSEConversation() {
     );
 
     try {
-      // You can modify this to call a different endpoint for dual responses
-      // For now, we'll simulate by calling the same endpoint twice
-      let responseA = '';
-      let responseB = '';
-
-      // First call for response A
-      await sseClient.current.streamChat(
-        question + ' (Version A)',
-        (chunk) => {
-          if (chunk.parts && chunk.parts[0]?.text) {
-            responseA = chunk.parts[0].text;
-
-            if (debounceTimer.current) {
-              clearTimeout(debounceTimer.current);
-            }
-
-            debounceTimer.current = setTimeout(() => {
-              try {
-                const sanitizedA = sanitizeMarkdownContent(responseA);
-                setQueries((prev) =>
-                  prev.map((q, idx) =>
-                    idx === queryIndex ? { ...q, response: sanitizedA } : q,
-                  ),
-                );
-              } catch (error) {
-                console.error('Error processing markdown chunk A:', error);
-                setQueries((prev) =>
-                  prev.map((q, idx) =>
-                    idx === queryIndex ? { ...q, response: responseA } : q,
-                  ),
-                );
-              }
-            }, 100);
-          }
-        },
-        () => {
-          console.log('Response A completed');
-          // Start response B after A completes
-          startResponseB();
-        },
-        (error) => {
-          console.error('SSE error for response A:', error);
-          setQueries((prev) =>
-            prev.map((q, idx) =>
-              idx === queryIndex
-                ? { ...q, status: 'error', response: `Error A: ${error}` }
-                : q,
-            ),
-          );
-        },
+      // Start both tone requests in parallel
+      const professionalPromise = fetchToneResponse(
+        question,
+        'professional',
+        queryIndex,
+        false,
+      );
+      const casualPromise = fetchToneResponse(
+        question,
+        'casual',
+        queryIndex,
+        true,
       );
 
-      const startResponseB = async () => {
-        await sseClient.current.streamChat(
-          question + ' (Version B)',
-          (chunk) => {
-            if (chunk.parts && chunk.parts[0]?.text) {
-              responseB = chunk.parts[0].text;
+      // Wait for both to complete
+      await Promise.all([professionalPromise, casualPromise]);
 
-              if (debounceTimer.current) {
-                clearTimeout(debounceTimer.current);
-              }
+      // Mark as completed when both responses are done
+      setQueries((prev) =>
+        prev.map((q, idx) =>
+          idx === queryIndex ? { ...q, status: 'completed' } : q,
+        ),
+      );
 
-              debounceTimer.current = setTimeout(() => {
-                try {
-                  const sanitizedB = sanitizeMarkdownContent(responseB);
-                  setQueries((prev) =>
-                    prev.map((q, idx) =>
-                      idx === queryIndex ? { ...q, responseB: sanitizedB } : q,
-                    ),
-                  );
-                } catch (error) {
-                  console.error('Error processing markdown chunk B:', error);
-                  setQueries((prev) =>
-                    prev.map((q, idx) =>
-                      idx === queryIndex ? { ...q, responseB: responseB } : q,
-                    ),
-                  );
-                }
-              }, 100);
-            }
-          },
-          () => {
-            console.log('Both responses completed');
-            setQueries((prev) =>
-              prev.map((q, idx) =>
-                idx === queryIndex ? { ...q, status: 'completed' } : q,
-              ),
-            );
-          },
-          (error) => {
-            console.error('SSE error for response B:', error);
-            setQueries((prev) =>
-              prev.map((q, idx) =>
-                idx === queryIndex
-                  ? { ...q, status: 'error', responseB: `Error B: ${error}` }
-                  : q,
-              ),
-            );
-          },
-        );
-      };
+      console.log('✅ Both tone responses completed successfully');
     } catch (error) {
-      console.error('Error in fetchDualAnswerStream:', error);
+      console.error('❌ Error in parallel dual streaming:', error);
       setQueries((prev) =>
         prev.map((q, idx) =>
           idx === queryIndex
@@ -201,9 +245,9 @@ export default function DualSSEConversation() {
   // Handle question submission with dual response option
   const handleQuestionSubmission = (
     question: string,
-    isDual: boolean = false,
+    isDual: boolean = true,
   ) => {
-    console.log('Question submitted:', question, 'Dual mode:', isDual);
+    console.log('📝 Question submitted:', question, 'Dual mode:', isDual);
 
     if (question && status !== 'loading') {
       const trimmedQuestion = question.trim();
@@ -219,16 +263,50 @@ export default function DualSSEConversation() {
       setStatus('loading');
 
       if (isDual) {
+        // Use dual tone streaming
         fetchDualAnswerStream(trimmedQuestion, queries.length);
       } else {
-        // Use regular single response logic here
-        // You can implement this similar to your existing SSEConversation
+        // Use single professional tone for regular questions
+        fetchToneResponse(
+          trimmedQuestion,
+          'professional',
+          queries.length,
+          false,
+        )
+          .then(() => {
+            setQueries((prev) =>
+              prev.map((q, idx) =>
+                idx === queries.length ? { ...q, status: 'completed' } : q,
+              ),
+            );
+          })
+          .catch((error) => {
+            console.error('Single tone error:', error);
+            setQueries((prev) =>
+              prev.map((q, idx) =>
+                idx === queries.length
+                  ? {
+                      ...q,
+                      status: 'error',
+                      response: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    }
+                  : q,
+              ),
+            );
+          })
+          .finally(() => {
+            setStatus('idle');
+          });
       }
+
+      setStatus('idle');
     }
   };
 
   // Handle user selection of preferred response
   const handleResponseSelection = (queryIndex: number, choice: 'A' | 'B') => {
+    console.log(`🎯 User selected response ${choice} for query ${queryIndex}`);
+
     setQueries((prev) =>
       prev.map((q, idx) => {
         if (idx === queryIndex) {
@@ -272,7 +350,25 @@ export default function DualSSEConversation() {
             ) : query.response ? (
               <div className="mb-7">
                 {/* Single response rendering */}
-                <div>Response: {query.response}</div>
+                <div className="group flex w-full flex-col self-start">
+                  <div className="my-2 flex flex-row items-center gap-3">
+                    <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-green-500 text-sm font-bold text-white">
+                      🔮
+                    </div>
+                    <p className="text-base font-semibold">
+                      Professional Response
+                    </p>
+                  </div>
+                  <div className="prose prose-sm sm:prose-base mr-5 px-7 py-[18px]">
+                    {query.response}
+                  </div>
+                </div>
+              </div>
+            ) : query.status === 'streaming' ? (
+              <div className="mb-7">
+                <div className="flex items-center justify-center">
+                  <div className="text-gray-500">Generating responses...</div>
+                </div>
               </div>
             ) : null}
           </div>
@@ -288,13 +384,14 @@ export default function DualSSEConversation() {
           <button
             onClick={() => {
               const question = prompt(
-                'Enter your question for dual responses:',
+                'Enter your question for dual tone responses:',
               );
               if (question) handleQuestionSubmission(question, true);
             }}
-            className="rounded-full bg-purple-500 px-4 py-2 text-white hover:bg-purple-600"
+            className="rounded-full bg-purple-500 px-4 py-2 text-white transition-colors hover:bg-purple-600"
+            title="Get both professional and casual responses"
           >
-            Dual
+            🎭 Dual Tone
           </button>
         </div>
       </div>
