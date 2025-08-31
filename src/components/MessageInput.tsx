@@ -91,6 +91,7 @@ export default function MessageInput({
     }
   };
 
+  
   return (
     <div className={`mx-2 flex w-full flex-col ${className}`}>
       <div className="border-dark-gray bg-lotion dark:border-grey relative flex w-full flex-col rounded-[23px] border dark:bg-transparent">
