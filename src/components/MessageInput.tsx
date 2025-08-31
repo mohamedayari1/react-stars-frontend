@@ -91,6 +91,7 @@ export default function MessageInput({
     }
   };
 
+
   
   return (
     <div className={`mx-2 flex w-full flex-col ${className}`}>
