@@ -24,7 +24,7 @@ interface DualAnswerBubbleProps {
 }
 
 // Hardcoded theme for demo
-const isDarkTheme = false;
+const isDarkTheme = true;
 
 // Reusable Markdown Renderer component
 const MarkdownRenderer = ({ children, className }: MarkdownRendererProps) => {
