@@ -1,92 +1,11 @@
 .list p {
-    display: inline;
-  }
-  
-  .list li:not(:first-child) {
-    margin-top: 1em;
-  }
-  
-  .list li > .list {
-    margin-top: 1em;
-  }
-  
-  /* Dark mode enhancements for conversation bubbles */
-  :global(.dark) .list {
-    color: #e5e7eb;
-  }
-  
-  :global(.dark) .list li {
-    color: #d1d5db;
-  }
-  
-  /* Enhanced dark mode styling for conversation components */
-  :global(.dark) .conversation-bubble {
-    background-color: #1f2937;
-    border-color: #374151;
-  }
-  
-  :global(.dark) .source-card {
-    background-color: #111827;
-    border-color: #374151;
-    color: #e5e7eb;
-  }
-  
-  :global(.dark) .tool-call-card {
-    background-color: #111827;
-    border-color: #374151;
-    color: #e5e7eb;
-  }
-  
-  :global(.dark) .thought-card {
-    background-color: #111827;
-    border-color: #374151;
-    color: #e5e7eb;
-  }
-  
-  /* Dark mode specific text colors */
-  :global(.dark) .text-gray-4000 {
-    color: #9ca3af;
-  }
-  
-  :global(.dark) .text-chinese-silver {
-    color: #d1d5db;
-  }
-  
-  :global(.dark) .text-bright-gray {
-    color: #e5e7eb;
-  }
-  
-  /* Dark mode borders and backgrounds */
-  :global(.dark) .border-silver {
-    border-color: #374151;
-  }
-  
-  :global(.dark) .bg-gray-1000 {
-    background-color: #1f2937;
-  }
-  
-  :global(.dark) .bg-gun-metal {
-    background-color: #111827;
-  }
-  
-  :global(.dark) .bg-raisin-black {
-    background-color: #0f172a;
-  }
-  
-  /* Dark mode hover states */
-  :global(.dark) .hover\:bg-\[#F1F1F1\]:hover {
-    background-color: #374151;
-  }
-  
-  :global(.dark) .hover\:bg-\[#2C2E3C\]:hover {
-    background-color: #1f2937;
-  }
-  
-  /* Dark mode transitions */
-  :global(.dark) * {
-    transition:
-      background-color 0.2s ease,
-      border-color 0.2s ease,
-      color 0.2s ease;
-  }
-  
+  display: inline;
+}
+
+.list li:not(:first-child) {
+  margin-top: 1em;
+}
+
+.list li > .list {
+  margin-top: 1em;
+}
