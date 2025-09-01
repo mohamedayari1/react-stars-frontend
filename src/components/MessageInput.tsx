@@ -22,7 +22,7 @@ export default function MessageInput({
 }: SimpleTextInputProps) {
   const { t } = useTranslation(); // For internationalization (i18n)
 
-  const isDarkTheme = false; // Replace with actual theme detection logic
+  const isDarkTheme = true; // Replace with actual theme detection logic
 
   // STATE MANAGEMENT
   const [value, setValue] = useState(''); // Current text input value
